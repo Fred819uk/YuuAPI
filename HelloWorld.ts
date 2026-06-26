@@ -12,35 +12,50 @@ function start() {
 
   console.log('Testing 1,2,3!');
 
-  const basePos = new Vector3(5, 1, 0);
+  const sphereDiameter = 1;
+  const sphereRadius = sphereDiameter * 0.5;
+  const basePos = new Vector3(5, sphereRadius, 0);
 
-  // spawn spheres
+  // ground plane so the bounce reads clearly
+  spawnPrimitive.plane(
+    "Both",
+    new Vector3(0, 0, 0),
+    new Vector3(20, 1, 20),
+    Quaternion.one,
+    new Color(0.4, 0.4, 0.4),
+    1,
+    "None",
+    "Empty",
+    undefined
+  );
+
   const sphere1 = spawnPrimitive.sphere(
     16,
     16,
     new Vector3(basePos.x, basePos.y, basePos.z),
-    1,
+    sphereDiameter,
     Quaternion.one,
     Color.red,
     1,
-    'Sphere',
-    'Static',
+    "Sphere",
+    "Static",
     undefined
   );
+
   spawnPrimitive.sphere(
     16,
     16,
     new Vector3(0, 1, 5),
-    1,
+    sphereDiameter,
     Quaternion.one,
     Color.blue,
     1,
-    'Sphere',
-    'Static',
+    "Sphere",
+    "Static",
     undefined
   );
 
-  const spawnInterval = 0.05;
+  const spawnInterval = 0.1;
   const particleLifetime = 1;
   const trailParticles: { entity: any; life: number; initialAlpha: number; color: Color }[] = [];
   let spawnTimer = 0;
@@ -53,8 +68,8 @@ function start() {
     t += deltaTime;
 
     if (sphere1 && sphere1.exists()) {
-      const offset = Math.sin((t / period) * Math.PI * 2) * amplitude;
-      sphere1.pos = new Vector3(basePos.x, basePos.y + offset, basePos.z);
+      const bounce = Math.abs(Math.sin((t / period) * Math.PI));
+      sphere1.pos = new Vector3(basePos.x, basePos.y + bounce * amplitude, basePos.z);
 
       spawnTimer += deltaTime;
       while (spawnTimer >= spawnInterval) {
@@ -65,15 +80,20 @@ function start() {
           8,
           8,
           new Vector3(pos.x, pos.y, pos.z),
-          0.2,
+          sphereDiameter,
           Quaternion.one,
           Color.red,
-          0.6,
-          'None',
-          'Empty',
+          0.8,
+          "None",
+          "Empty",
           undefined
         );
-        trailParticles.push({ entity: particle, life: particleLifetime, initialAlpha: 0.6, color: Color.red });
+
+        particle.material.emissionColor.set(Color.red);
+        particle.material.emissionStrength.set(1);
+        particle.material.roughness.set(0);
+
+        trailParticles.push({ entity: particle, life: particleLifetime, initialAlpha: 0.8, color: Color.red });
       }
     }
 
