@@ -14,7 +14,7 @@ function start() {
   console.log('Testing 1,2,3!');
 
   // spawn spheres
-  const sphere1 = spawnPrimitive.sphere(16, 16, new Vector3(5, 1, 0), 1, Quaternion.one, Color.red, 1, 'Sphere', 'Static', undefined);
+  const sphere1 = spawnPrimitive.sphere(16, 16, new Vector3(5, 5, 0), 1, Quaternion.one, Color.red, 1, 'Sphere', 'Static', undefined);
   spawnPrimitive.sphere(16, 16, new Vector3(0, 1, 5), 1, Quaternion.one, Color.blue, 1, 'Sphere', 'Static', undefined);
 
   // animate first sphere: move up/down by 5 units peak-to-peak over 5 seconds (±2.5 amplitude)
