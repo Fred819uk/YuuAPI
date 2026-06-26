@@ -13,5 +13,6 @@ function start() {
   console.log('Testing 1,2,3!');
 
   // spawn a white sphere at (0,1,0)
-  spawnPrimitive.sphere(16, 16, new Vector3(0, 1, 0), 1, Quaternion.one, Color.white, 1, 'Sphere', 'Static', undefined);
+  spawnPrimitive.sphere(16, 16, new Vector3(5, 1, 0), 1, Quaternion.one, Color.red, 1, 'Sphere', 'Static', undefined);
+  spawnPrimitive.sphere(16, 16, new Vector3(0, 1, 5), 1, Quaternion.one, Color.blue, 1, 'Sphere', 'Static', undefined);
 }
