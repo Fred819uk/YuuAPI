@@ -12,14 +12,38 @@ function start() {
 
   console.log("Testing 1,2,3!");
 
-  const sphereDiameter = 1;
+  const sphereDiameter = 0.35;
   const sphereRadius = sphereDiameter * 0.5;
-  const basePos = new Vector3(5, sphereRadius, 0);
+
+  const maxCircleRadius = 5;
+  const minCircleRadius = 0.25;
+  const shrinkPerLap = 0.5;
+  const risePerLap = 1;
+  const lapDuration = 5;
+  const angularSpeed = (Math.PI * 2) / lapDuration;
+
+  let circleCenter = new Vector3(0, sphereRadius, 0);
+  let currentRadius = maxCircleRadius;
+  let currentHeight = 0;
+  let angle = 0;
+
+  const spawnInterval = 0.08;
+  const particleLifetime = 1;
+  const trailParticles: { entity: any; life: number; color: Color }[] = [];
+  let spawnTimer = 0;
+
+  let fpsElapsed = 0;
+  let fpsFrames = 0;
+  const fpsReportInterval = 0.5;
+
+  function randomRange(min: number, max: number) {
+    return Math.random() * (max - min) + min;
+  }
 
   spawnPrimitive.plane(
     "Both",
     new Vector3(0, 0, 0),
-    new Vector3(20, 1, 20),
+    new Vector3(25, 1, 25),
     Quaternion.one,
     new Color(0.4, 0.4, 0.4),
     1,
@@ -31,7 +55,7 @@ function start() {
   const sphere1 = spawnPrimitive.sphere(
     16,
     16,
-    new Vector3(basePos.x, basePos.y, basePos.z),
+    new Vector3(circleCenter.x + currentRadius, sphereRadius, circleCenter.z),
     sphereDiameter,
     Quaternion.one,
     Color.red,
@@ -54,19 +78,6 @@ function start() {
     undefined
   );
 
-  const spawnInterval = 0.1;
-  const particleLifetime = 1;
-  const trailParticles: { entity: any; life: number; color: Color }[] = [];
-  let spawnTimer = 0;
-
-  let t = 0;
-  const period = 5;
-  const amplitude = 2.5;
-
-  let fpsElapsed = 0;
-  let fpsFrames = 0;
-  const fpsReportInterval = 0.5;
-
   Events.onUpdate((deltaTime: number) => {
     t += deltaTime;
     fpsElapsed += deltaTime;
@@ -80,8 +91,25 @@ function start() {
     }
 
     if (sphere1 && sphere1.exists()) {
-      const bounce = Math.abs(Math.sin((t / period) * Math.PI));
-      sphere1.pos = new Vector3(basePos.x, basePos.y + bounce * amplitude, basePos.z);
+      angle += angularSpeed * deltaTime;
+
+      if (angle >= Math.PI * 2) {
+        angle -= Math.PI * 2;
+        currentHeight += risePerLap;
+        currentRadius = Math.max(0, currentRadius - shrinkPerLap);
+
+        if (currentRadius <= minCircleRadius) {
+          circleCenter = new Vector3(randomRange(-8, 8), sphereRadius, randomRange(-8, 8));
+          currentRadius = maxCircleRadius;
+          currentHeight = 0;
+        }
+      }
+
+      const x = circleCenter.x + currentRadius * Math.cos(angle);
+      const z = circleCenter.z + currentRadius * Math.sin(angle);
+      const y = sphereRadius + currentHeight;
+
+      sphere1.pos = new Vector3(x, y, z);
 
       spawnTimer += deltaTime;
       while (spawnTimer >= spawnInterval) {
@@ -118,7 +146,7 @@ function start() {
 
       p.life -= deltaTime;
       const remaining = Math.max(0, p.life);
-      const scale = remaining / particleLifetime * sphereDiameter;
+      const scale = (remaining / particleLifetime) * sphereDiameter;
 
       p.entity.scale = new Vector3(scale, scale, scale);
       p.entity.mesh.color.set(p.color, remaining / particleLifetime);
