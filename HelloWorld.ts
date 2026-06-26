@@ -20,29 +20,111 @@ function start() {
   const lapDuration = 5;
   const angularSpeed = (Math.PI * 2) / lapDuration;
 
-  let circleCenter = new Vector3(0, sphereRadius, 0);
-  let currentRadius = maxCircleRadius;
-  let currentHeight = 0;
-  let angle = 0;
-
   const spawnInterval = 0.08;
   const particleLifetime = 1;
   const trailParticles: { entity: any; life: number; color: Color }[] = [];
-  let spawnTimer = 0;
+  const orbitStates: Array<{
+    entity: any;
+    color: Color;
+    center: Vector3;
+    currentRadius: number;
+    currentHeight: number;
+    angle: number;
+    spawnTimer: number;
+  }> = [];
 
   let fpsElapsed = 0;
   let fpsFrames = 0;
   const fpsReportInterval = 0.5;
+  let nextNewColorIsBlue = true;
 
   function randomRange(min: number, max: number) {
     return Math.random() * (max - min) + min;
   }
 
-  function resetCircle() {
-    circleCenter = new Vector3(randomRange(-8, 8), sphereRadius, randomRange(-8, 8));
-    currentRadius = maxCircleRadius;
-    currentHeight = 0;
-    angle = 0;
+  function randomCenter() {
+    return new Vector3(randomRange(-8, 8), sphereRadius, randomRange(-8, 8));
+  }
+
+  function createOrbitState(center: Vector3, color: Color) {
+    const entity = spawnPrimitive.sphere(
+      16,
+      16,
+      new Vector3(center.x + maxCircleRadius, center.y, center.z),
+      sphereDiameter,
+      Quaternion.one,
+      color,
+      1,
+      "Sphere",
+      "Static",
+      undefined
+    );
+
+    orbitStates.push({
+      entity,
+      color,
+      center,
+      currentRadius: maxCircleRadius,
+      currentHeight: 0,
+      angle: 0,
+      spawnTimer: 0,
+    });
+  }
+
+  function resetOrbitState(state: any) {
+    state.center = randomCenter();
+    state.currentRadius = maxCircleRadius;
+    state.currentHeight = 0;
+    state.angle = 0;
+
+    const newColor = nextNewColorIsBlue ? Color.blue : Color.red;
+    nextNewColorIsBlue = !nextNewColorIsBlue;
+    createOrbitState(randomCenter(), newColor);
+  }
+
+  function updateOrbitState(state: any, deltaTime: number) {
+    if (!state.entity || !state.entity.exists()) {
+      return;
+    }
+
+    state.angle += angularSpeed * deltaTime;
+    if (state.angle >= Math.PI * 2) {
+      state.angle -= Math.PI * 2;
+      state.currentHeight += risePerLap;
+      state.currentRadius = Math.max(0, state.currentRadius - shrinkPerLap);
+
+      if (state.currentRadius <= 0) {
+        resetOrbitState(state);
+      }
+    }
+
+    const x = state.center.x + state.currentRadius * Math.cos(state.angle);
+    const z = state.center.z + state.currentRadius * Math.sin(state.angle);
+    const y = state.center.y + state.currentHeight;
+
+    state.entity.pos = new Vector3(x, y, z);
+
+    state.spawnTimer += deltaTime;
+    while (state.spawnTimer >= spawnInterval) {
+      state.spawnTimer -= spawnInterval;
+
+      const pos = state.entity.pos;
+      const particle = spawnPrimitive.sphere(
+        8,
+        8,
+        new Vector3(pos.x, pos.y, pos.z),
+        sphereDiameter,
+        Quaternion.one,
+        state.color,
+        0.8,
+        "None",
+        "Empty",
+        undefined
+      );
+
+      particle.mesh.color.set(state.color, 0.8);
+      trailParticles.push({ entity: particle, life: particleLifetime, color: state.color });
+    }
   }
 
   spawnPrimitive.plane(
@@ -57,31 +139,7 @@ function start() {
     undefined
   );
 
-  const sphere1 = spawnPrimitive.sphere(
-    16,
-    16,
-    new Vector3(circleCenter.x + currentRadius, circleCenter.y, circleCenter.z),
-    sphereDiameter,
-    Quaternion.one,
-    Color.red,
-    1,
-    "Sphere",
-    "Static",
-    undefined
-  );
-
-  spawnPrimitive.sphere(
-    16,
-    16,
-    new Vector3(0, 1, 5),
-    sphereDiameter,
-    Quaternion.one,
-    Color.blue,
-    1,
-    "Sphere",
-    "Static",
-    undefined
-  );
+  createOrbitState(new Vector3(5, sphereRadius, 0), Color.red);
 
   Events.onUpdate((deltaTime: number) => {
     fpsElapsed += deltaTime;
@@ -94,47 +152,8 @@ function start() {
       fpsFrames = 0;
     }
 
-    if (sphere1 && sphere1.exists()) {
-      angle += angularSpeed * deltaTime;
-
-      if (angle >= Math.PI * 2) {
-        angle -= Math.PI * 2;
-        currentHeight += risePerLap;
-        currentRadius = Math.max(0, currentRadius - shrinkPerLap);
-
-        if (currentRadius <= 0) {
-          resetCircle();
-        }
-      }
-
-      const x = circleCenter.x + currentRadius * Math.cos(angle);
-      const z = circleCenter.z + currentRadius * Math.sin(angle);
-      const y = circleCenter.y + currentHeight;
-
-      sphere1.pos = new Vector3(x, y, z);
-
-      spawnTimer += deltaTime;
-      while (spawnTimer >= spawnInterval) {
-        spawnTimer -= spawnInterval;
-        const pos = sphere1.pos;
-
-        const particle = spawnPrimitive.sphere(
-          8,
-          8,
-          new Vector3(pos.x, pos.y, pos.z),
-          sphereDiameter,
-          Quaternion.one,
-          Color.red,
-          0.8,
-          "None",
-          "Empty",
-          undefined
-        );
-
-        particle.mesh.color.set(Color.red, 0.8);
-        
-        trailParticles.push({ entity: particle, life: particleLifetime, color: Color.red });
-      }
+    for (const state of orbitStates) {
+      updateOrbitState(state, deltaTime);
     }
 
     for (let i = trailParticles.length - 1; i >= 0; i--) {
